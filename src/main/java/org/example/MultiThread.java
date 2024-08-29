@@ -9,13 +9,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class MultiThread {
-    private static final int nbPoint = 1000000000;
+    private static final long nbPoint = 10_000_000_000L;
     private static final int nbThread = 8;
-    private static int count = 0;
+    private static long count = 0;
 
     static class Worker implements Runnable {
-        public int countWorker = 0;
-        private CountDownLatch latch;
+        public long countWorker = 0;
+        private final CountDownLatch latch;
 //        private Lock lock = new ReentrantLock();
 
         public Worker(CountDownLatch latch) {
@@ -25,7 +25,7 @@ public class MultiThread {
         @Override
         public void run() {
             Random random = new Random();
-            for (int j = 0; j < nbPoint / nbThread; j++) {
+            for (long j = 0; j < nbPoint / nbThread; j++) {
                 double x = -1 + 2 * random.nextDouble();
                 double y = -1 + 2 * random.nextDouble();
                 if (x * x + y * y <= 1) {
@@ -66,10 +66,10 @@ public class MultiThread {
             threads[i] = new Thread(workers[i]);
             threads[i].start();
         }
-
+        // Version A: Using CountDownLatch
         latch.await();
 
-        // Version 2: Using join() method and incrementing count after all threads are finished
+        // Version B: Using join() method
 //        for (Thread thread : threads) {
 //            try {
 //                thread.join();
@@ -77,12 +77,13 @@ public class MultiThread {
 //                e.printStackTrace();
 //            }
 //        }
+        // Version 3: Increment count in main thread
         for (Worker worker : workers) {
             count += worker.countWorker;
         }
 
-        double pi = 4 * (double) count / nbPoint;
-        System.out.println("Estimated value of Pi: " + pi);
+        double pi = 4 * (double) count / (double) nbPoint;
+        System.out.println("Estimated value of Pi: " + pi); //3,141592_653589793
 
         long endTime = System.currentTimeMillis();
         long elapsedTimeMillis = endTime - startTime;
