@@ -4,6 +4,9 @@ import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MultiThread {
     private static final int nbPoint = 1000000000;
@@ -11,7 +14,13 @@ public class MultiThread {
     private static int count = 0;
 
     static class Worker implements Runnable {
-        private int countWorker = 0;
+        public int countWorker = 0;
+        private CountDownLatch latch;
+//        private Lock lock = new ReentrantLock();
+
+        public Worker(CountDownLatch latch) {
+            this.latch = latch;
+        }
 
         @Override
         public void run() {
@@ -23,18 +32,25 @@ public class MultiThread {
                     countWorker++;
                 }
             }
-        }
-
-        public int getCountWorker() {
-            return countWorker;
+            // Version 1: Using ReentrantLock
+//            lock.lock();
+//            count += countWorker;
+//            lock.unlock();
+            // Version 2: Using synchronized block in Java
+//            synchronized (this) {
+//                count += countWorker;
+//            }
+            latch.countDown();
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         System.out.println("Monte Carlo Simulation to estimate Pi");
 
-        long startTime = System.currentTimeMillis();
+        CountDownLatch latch = new CountDownLatch(nbThread);
 
+        long startTime = System.currentTimeMillis();
+        //CPU load
         OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
         double startCpuLoad = osBean.getProcessCpuLoad();
         if (startCpuLoad < 0) {
@@ -46,21 +62,23 @@ public class MultiThread {
         Worker[] workers = new Worker[nbThread];
 
         for (int i = 0; i < nbThread; i++) {
-            workers[i] = new Worker();
+            workers[i] = new Worker(latch);
             threads[i] = new Thread(workers[i]);
             threads[i].start();
         }
 
-        for (Thread thread : threads) {
-            try {
-                thread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        latch.await();
 
+        // Version 2: Using join() method and incrementing count after all threads are finished
+//        for (Thread thread : threads) {
+//            try {
+//                thread.join();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
         for (Worker worker : workers) {
-            count += worker.getCountWorker();
+            count += worker.countWorker;
         }
 
         double pi = 4 * (double) count / nbPoint;
